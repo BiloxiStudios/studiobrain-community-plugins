@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "updated": "2026-04-02T00:00:00Z",
   "plugins": [
     {
@@ -17,5 +17,8 @@
       "min_version": "0.1.0",
       "license": "MIT"
     }
-  ]
+  ],
+  "templates": [],
+  "rules": [],
+  "layouts": []
 }
