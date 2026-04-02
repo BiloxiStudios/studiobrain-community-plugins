@@ -1,0 +1,60 @@
+name: Validate Plugin Registry
+
+on:
+  pull_request:
+    paths:
+      - "index.json"
+      - "schema/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "index.json"
+      - "schema/**"
+
+jobs:
+  validate:
+    name: Validate index.json
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install validation dependencies
+        run: npm install --save-dev ajv ajv-formats ajv-cli
+
+      - name: Check index.json is valid JSON
+        run: |
+          python3 -c "
+          import json, sys
+          try:
+              with open('index.json') as f:
+                  data = json.load(f)
+              print(f'index.json is valid JSON with {len(data[\"plugins\"])} plugin(s)')
+          except json.JSONDecodeError as e:
+              print(f'ERROR: index.json is not valid JSON: {e}', file=sys.stderr)
+              sys.exit(1)
+          "
+
+      - name: Validate each plugin entry against schema
+        run: |
+          python3 scripts/validate_entries.py
+
+      - name: Check for duplicate plugin IDs
+        run: |
+          python3 scripts/check_duplicates.py
+
+      - name: Enforce WASM-only runtime
+        run: |
+          python3 scripts/check_wasm_runtime.py
+
+      - name: Summary
+        if: success()
+        run: |
+          python3 scripts/print_summary.py

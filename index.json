@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-04-02T00:00:00Z",
+  "plugins": [
+    {
+      "id": "hello-world-community",
+      "name": "Hello World (Community Example)",
+      "version": "1.0.0",
+      "description": "Example community plugin demonstrating the submission format",
+      "author": "StudioBrain Community",
+      "repo_url": "https://github.com/example/sb-plugin-hello",
+      "wasm_bundle_url": "",
+      "platforms": ["core", "desktop", "cloud"],
+      "runtime": "wasm",
+      "category": "example",
+      "tags": ["example", "starter"],
+      "min_version": "0.1.0",
+      "license": "MIT"
+    }
+  ]
+}

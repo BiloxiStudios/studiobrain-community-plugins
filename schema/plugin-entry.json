@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/BiloxiStudios/studiobrain-community-plugins/blob/main/schema/plugin-entry.json",
+  "title": "StudioBrain Community Plugin Entry",
+  "description": "Schema for a single plugin entry in the StudioBrain community plugin registry index.json",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "description",
+    "author",
+    "repo_url",
+    "wasm_bundle_url",
+    "platforms",
+    "runtime",
+    "category",
+    "tags",
+    "min_version",
+    "license"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique plugin identifier. Use author-plugin-slug format.",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "minLength": 3,
+      "maxLength": 64
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name for the plugin.",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version of the plugin entry. Must match the version of the hosted WASM bundle.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of what the plugin does. Max 200 characters.",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name, GitHub username, or organization name.",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "repo_url": {
+      "type": "string",
+      "description": "URL to the plugin source repository.",
+      "format": "uri",
+      "pattern": "^https://"
+    },
+    "wasm_bundle_url": {
+      "type": "string",
+      "description": "Direct URL to the .wasm bundle file. May be empty string if not yet published.",
+      "oneOf": [
+        {
+          "const": ""
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      ]
+    },
+    "platforms": {
+      "type": "array",
+      "description": "StudioBrain editions this plugin supports.",
+      "items": {
+        "type": "string",
+        "enum": ["core", "desktop", "cloud"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "runtime": {
+      "type": "string",
+      "description": "Plugin runtime type. Community plugins must be 'wasm'.",
+      "const": "wasm"
+    },
+    "category": {
+      "type": "string",
+      "description": "Primary category for the plugin.",
+      "enum": ["example", "utility", "importer", "exporter", "ui", "workflow"]
+    },
+    "tags": {
+      "type": "array",
+      "description": "Searchable tags for the plugin. Maximum 5.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        "maxLength": 32
+      },
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "min_version": {
+      "type": "string",
+      "description": "Minimum StudioBrain version required to run this plugin.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier for the plugin.",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
+}
