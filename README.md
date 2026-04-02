@@ -46,24 +46,3 @@ At a high level:
 ## License
 
 The registry infrastructure (this repository) is licensed under MIT. Individual plugins retain their own licenses as declared in each entry's `license` field.
-
-## Creating the GitHub repository
-
-When you are ready to push this to GitHub, run the following from `/opt/studiobrain-dev/community-plugins/`:
-
-```bash
-gh repo create BiloxiStudios/studiobrain-community-plugins \
-  --public \
-  --description "Official community plugin registry for StudioBrain — WASM plugins submitted via PR" \
-  --homepage "https://studiobrain.ai" \
-  --source . \
-  --remote origin \
-  --push
-```
-
-This will:
-1. Create the public repo under the BiloxiStudios org
-2. Set it as the `origin` remote
-3. Push the initial commit
-
-After creation, enable branch protection on `main` (require PR + passing CI before merge).
