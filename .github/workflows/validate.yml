@@ -1,60 +1,68 @@
-name: Validate Plugin Registry
+name: Validate Community Registry
 
 on:
   pull_request:
     paths:
       - "index.json"
+      - "plugins/**"
+      - "catalog/**"
       - "schema/**"
+      - "scripts/**"
+      - ".github/workflows/validate.yml"
   push:
     branches:
       - main
     paths:
       - "index.json"
+      - "plugins/**"
+      - "catalog/**"
       - "schema/**"
+      - "scripts/**"
+      - ".github/workflows/validate.yml"
 
 jobs:
   validate:
-    name: Validate index.json
+    name: Validate plugin and catalog indexes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: "20"
+          python-version: "3.12"
 
       - name: Install validation dependencies
-        run: npm install --save-dev ajv ajv-formats ajv-cli
+        run: pip install jsonschema
 
-      - name: Check index.json is valid JSON
+      - name: Check indexes are valid JSON
         run: |
           python3 -c "
           import json, sys
-          try:
-              with open('index.json') as f:
-                  data = json.load(f)
-              print(f'index.json is valid JSON with {len(data[\"plugins\"])} plugin(s)')
-          except json.JSONDecodeError as e:
-              print(f'ERROR: index.json is not valid JSON: {e}', file=sys.stderr)
-              sys.exit(1)
+          paths = ('plugins/index.json', 'catalog/index.json', 'index.json')
+          for path in paths:
+              try:
+                  with open(path) as f:
+                      json.load(f)
+                  print(f'{path} is valid JSON')
+              except json.JSONDecodeError as e:
+                  print(f'ERROR: {path} is not valid JSON: {e}', file=sys.stderr)
+                  sys.exit(1)
           "
 
-      - name: Validate each plugin entry against schema
-        run: |
-          python3 scripts/validate_entries.py
+      - name: Validate plugin and catalog entries
+        run: python3 scripts/validate_entries.py
 
-      - name: Check for duplicate plugin IDs
-        run: |
-          python3 scripts/check_duplicates.py
+      - name: Check for duplicate IDs
+        run: python3 scripts/check_duplicates.py
 
-      - name: Enforce WASM-only runtime
-        run: |
-          python3 scripts/check_wasm_runtime.py
+      - name: Enforce WASM-component runtime
+        run: python3 scripts/check_wasm_runtime.py
 
       - name: Summary
         if: success()
-        run: |
-          python3 scripts/print_summary.py
+        run: python3 scripts/print_summary.py

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/BiloxiStudios/studiobrain-community-plugins/blob/main/schema/plugin-entry.json",
   "title": "StudioBrain Community Plugin Entry",
-  "description": "Schema for a single plugin entry in the StudioBrain community plugin registry index.json",
+  "description": "Schema for a single WASM-component plugin entry in plugins/index.json. Community plugins are wasm-component only (hello-world-community may still declare runtime=wasm as a placeholder).",
   "type": "object",
   "required": [
     "id",
@@ -12,6 +12,7 @@
     "author",
     "repo_url",
     "wasm_bundle_url",
+    "sha256",
     "platforms",
     "runtime",
     "category",
@@ -59,7 +60,7 @@
     },
     "wasm_bundle_url": {
       "type": "string",
-      "description": "Direct URL to the .wasm bundle file. May be empty string if not yet published.",
+      "description": "Direct HTTPS URL to the .wasm component bundle. Empty string only for unpublished placeholders.",
       "oneOf": [
         {
           "const": ""
@@ -67,6 +68,18 @@
         {
           "format": "uri",
           "pattern": "^https://"
+        }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "description": "SHA-256 hex digest of the WASM bundle. Empty only when wasm_bundle_url is empty.",
+      "oneOf": [
+        {
+          "const": ""
+        },
+        {
+          "pattern": "^[a-f0-9]{64}$"
         }
       ]
     },
@@ -82,8 +95,8 @@
     },
     "runtime": {
       "type": "string",
-      "description": "Plugin runtime type. Community plugins must be 'wasm'.",
-      "const": "wasm"
+      "description": "Must be wasm-component. The hello-world-community placeholder may use wasm.",
+      "enum": ["wasm-component", "wasm"]
     },
     "category": {
       "type": "string",

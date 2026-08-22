@@ -1,0 +1,67 @@
+name: Publish community indexes to R2
+
+# Merge + hourly refresh. Never runs on pull_request so R2 credentials stay
+# unreachable from untrusted PR code (same isolation as studiobrain-templates).
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Upload community/_index.json files
+    if: github.repository == 'BiloxiStudios/studiobrain-community-plugins'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install publish + validation dependencies
+        run: pip install boto3 jsonschema
+
+      - name: Validate indexes before publish
+        run: |
+          python3 scripts/validate_entries.py
+          python3 scripts/check_duplicates.py
+          python3 scripts/check_wasm_runtime.py
+
+      - name: Check R2 secrets
+        id: secrets
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "R2 secrets are not configured on this repository. Skipping publish."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish indexes to R2
+        if: steps.secrets.outputs.configured == 'true'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python3 scripts/publish_indexes_to_r2.py
+
+      - name: Secrets missing (no-op)
+        if: steps.secrets.outputs.configured != 'true'
+        run: |
+          echo "Add these GitHub Actions secrets to enable R2 publish:"
+          echo "  R2_ACCOUNT_ID"
+          echo "  R2_ACCESS_KEY_ID"
+          echo "  R2_SECRET_ACCESS_KEY"
+          echo "  R2_BUCKET (optional; script defaults to sb-content)"
