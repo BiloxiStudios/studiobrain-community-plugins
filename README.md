@@ -1,48 +1,70 @@
-# StudioBrain Community Plugins
+# StudioBrain Community Registry
 
-This repository is the official registry for community-submitted plugins for [StudioBrain](https://studiobrain.ai). Community plugins are distributed as WebAssembly (WASM) bundles and work across all StudioBrain editions (core, desktop, cloud).
+Public submission home for community **plugins** and community **catalog data**.
+The GitHub repo is still named `studiobrain-community-plugins`; it is treated as
+`studiobrain-community` (rename is a follow-up).
 
-## How Community Plugins Work
+This is **one repo, two indexes**:
 
-StudioBrain loads plugins at runtime from the registry index. Each plugin entry in `index.json` points to a WASM bundle hosted in the plugin author's own repository. The core runtime downloads, sandboxes, and executes the WASM bundle — no server-side code is ever trusted or executed.
+| Index | File | What it lists |
+| --- | --- | --- |
+| Plugins | [`plugins/index.json`](plugins/index.json) | WASM-component plugins hosted by their authors |
+| Catalog | [`catalog/index.json`](catalog/index.json) | Community templates, rules, skills, layouts, packs, providers, abilities, flows, canvas |
 
-### What community plugins can do
+Root [`index.json`](index.json) is a thin pointer to those two files. Do not add
+new entries there.
 
-- Add custom entity types and field renderers
-- Register asset importers and exporters
-- Provide custom UI panels via the plugin host API
-- Define workflow steps and automation triggers
+## What belongs where
 
-### What community plugins cannot do
+**Submit a plugin here** when you have a sandboxed WASM component (WIT /
+`wasm-component` runtime). Authors host the `.wasm` file; this registry only
+stores the pointer, `sha256`, and metadata.
 
-- Access the filesystem directly (all I/O goes through the plugin host API)
+**Submit catalog data here** when you have community templates, rules, skills,
+layouts, packs, providers, abilities, flows, or canvas files. Official first-party
+data stays in [`studiobrain-templates`](https://github.com/BiloxiStudios/studiobrain-templates).
+Do **not** open PRs for community data against `studiobrain-templates`.
+
+## What we never do
+
+- **We never deploy community plugins as Cloudflare Workers.** Community WASM
+  is not bundled into Workers, Durable Objects, or Dynamic Worker Loader isolates.
+  Cloud may list an entry from the R2 index; it does not ship your plugin as a Worker.
+- We never host first-party / signed official plugins here. Those live in the
+  private `studiobrain-plugins` repo.
+- We never treat GitHub raw as the runtime source of truth. Clients read the
+  published R2 copies:
+  - `community/plugins/_index.json`
+  - `community/catalog/_index.json`
+
+## How plugins work
+
+StudioBrain loads community plugins at runtime from the plugin index. Each entry
+points at a WASM **component** hosted in the author's own repository. Desktop and
+self-host runtimes download, sandbox, and execute that bundle. Capability grants
+and a consent prompt are required.
+
+Community plugins cannot:
+
+- Access the filesystem directly (all I/O goes through the host API)
 - Make arbitrary network requests (requires declared capabilities)
-- Run native code — WASM only, no native addons
+- Run native code — WASM component only, no native addons, no Python
 
-## Submission Process
+## How to submit
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full step-by-step guide.
-
-At a high level:
-
-1. Build your plugin as a WASM bundle using the StudioBrain Plugin SDK
-2. Host the bundle somewhere publicly accessible (GitHub Releases, CDN, etc.)
-3. Fork this repository
-4. Add your plugin entry to `index.json` following the schema in `schema/plugin-entry.json`
-5. Open a pull request — CI will validate your entry automatically
-6. A maintainer will review and merge
+See [CONTRIBUTING.md](CONTRIBUTING.md). Plugin submissions and catalog-data
+submissions are different sections with different schemas.
 
 ## Requirements
 
 - Plugin must be open source (MIT, Apache 2.0, or similar permissive license)
-- WASM bundle must be publicly hosted with a stable URL
-- Plugin must target `min_version` of StudioBrain 0.1.0 or later
-- Plugin ID must be globally unique (namespaced as `author-slug-plugin-name` is recommended)
-
-## Registry Index
-
-`index.json` contains all registered community plugins. It is updated automatically when PRs are merged. Do not edit it manually outside of the plugin submission PR workflow.
+- Plugin runtime must be `wasm-component` (`wasm` is allowed only on the
+  `hello-world-community` placeholder)
+- WASM bundle must be publicly hosted with a stable HTTPS URL and a `sha256`
+- Catalog entries need `id`, `kind`, `version`, `download_url`, `sha256`, `author`
+- IDs must be globally unique across both indexes
 
 ## License
 
-The registry infrastructure (this repository) is licensed under MIT. Individual plugins retain their own licenses as declared in each entry's `license` field.
+The registry infrastructure (this repository) is licensed under MIT. Individual
+plugins and catalog artifacts retain their own licenses as declared on each entry.

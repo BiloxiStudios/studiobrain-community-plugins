@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/BiloxiStudios/studiobrain-community-plugins/blob/main/schema/template-entry.json",
   "title": "StudioBrain Community Template Entry",
-  "description": "Schema for a template, rule, or layout entry in the community registry",
+  "description": "Legacy detailed schema for template/rule/layout submissions. New catalog entries use schema/catalog-entry.json and live in catalog/index.json.",
   "type": "object",
   "required": [
     "id",

@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/BiloxiStudios/studiobrain-community-plugins/blob/main/schema/catalog-entry.json",
+  "title": "StudioBrain Community Catalog Entry",
+  "description": "Cheap schema for a community catalog submission (templates, rules, skills, layouts, packs, providers, abilities, flows, canvas) in catalog/index.json. Official first-party data stays in studiobrain-templates.",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "version",
+    "download_url",
+    "sha256",
+    "author"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique identifier. Use author-name format.",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "minLength": 3,
+      "maxLength": 64
+    },
+    "kind": {
+      "type": "string",
+      "description": "Catalog kind. Must match the array this entry is listed under.",
+      "enum": [
+        "template",
+        "rule",
+        "skill",
+        "layout",
+        "pack",
+        "provider",
+        "ability",
+        "flow",
+        "canvas"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version of the published artifact.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "download_url": {
+      "type": "string",
+      "description": "Direct HTTPS URL to the artifact. Empty only for unpublished drafts.",
+      "oneOf": [
+        {
+          "const": ""
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "description": "SHA-256 hex digest of the artifact at download_url. Empty only when download_url is empty.",
+      "oneOf": [
+        {
+          "const": ""
+        },
+        {
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      ]
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name, GitHub username, or organization name.",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  }
+}

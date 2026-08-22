@@ -1,35 +1,49 @@
-# Contributing a Community Plugin
+# Contributing to the StudioBrain Community Registry
 
-This guide walks you through submitting your plugin to the StudioBrain community registry.
+This repo is the public submission home for community work. It is still named
+`studiobrain-community-plugins` on GitHub; treat it as `studiobrain-community`
+(rename is planned).
 
-## Prerequisites
+There are **two different submission paths**. Pick one.
 
-Before submitting, make sure you have:
+| You are submitting | Edit this file | Schema |
+| --- | --- | --- |
+| A WASM-component plugin | [`plugins/index.json`](plugins/index.json) | [`schema/plugin-entry.json`](schema/plugin-entry.json) |
+| Catalog data (templates, rules, skills, layouts, packs, providers, abilities, flows, canvas) | [`catalog/index.json`](catalog/index.json) | [`schema/catalog-entry.json`](schema/catalog-entry.json) |
 
-- A working StudioBrain plugin built as a WASM bundle (`.wasm` file)
-- The bundle hosted at a stable, public URL (GitHub Releases is recommended)
-- A public source repository for your plugin
+Do **not** add entries to root `index.json`. That file is a pointer only.
+
+Official first-party templates, rules, skills, layouts, packs, and provider YAML
+stay in [`studiobrain-templates`](https://github.com/BiloxiStudios/studiobrain-templates).
+Do **not** open a PR there for community data.
+
+We **never deploy community plugins as Cloudflare Workers**. A merged plugin
+entry is an index pointer + checksum, not a Worker deploy.
+
+---
+
+## Submit a plugin
+
+### Prerequisites
+
+- A StudioBrain plugin built as a **WASM component** (`.wasm`)
+- The bundle hosted at a stable public HTTPS URL (GitHub Releases recommended)
+- A public source repository
 - A permissive open-source license (MIT, Apache 2.0, BSD, ISC, etc.)
+- The SHA-256 of the exact bytes at `wasm_bundle_url`
 
-## Step 1: Build your plugin
+### 1. Build
 
-Use the [StudioBrain Plugin SDK](https://github.com/BiloxiStudios/studiobrain-core) to scaffold and build your plugin:
+Use the [StudioBrain Plugin SDK](https://github.com/BiloxiStudios/studiobrain-core)
+to scaffold and build a WASM component. Community plugins must declare
+`"runtime": "wasm-component"`.
 
-```bash
-# Install the SDK CLI (once available)
-pip install studiobrain-plugin-sdk
+The `hello-world-community` example may still use `"runtime": "wasm"` as a
+placeholder. New submissions may not.
 
-# Scaffold a new plugin
-sb-plugin init my-plugin-name
+### 2. Host the WASM bundle
 
-# Build the WASM bundle
-sb-plugin build --release
-# Output: dist/my-plugin-name.wasm
-```
-
-## Step 2: Host your WASM bundle
-
-Upload the `.wasm` file to a stable, publicly accessible URL. GitHub Releases is the recommended approach:
+Upload the `.wasm` file to a stable public URL:
 
 ```bash
 gh release create v1.0.0 dist/my-plugin-name.wasm \
@@ -38,23 +52,20 @@ gh release create v1.0.0 dist/my-plugin-name.wasm \
   --notes "Initial release"
 ```
 
-The release asset URL will be in the format:
-```
-https://github.com/your-org/your-plugin-repo/releases/download/v1.0.0/my-plugin-name.wasm
+Checksum the published file:
+
+```bash
+sha256sum dist/my-plugin-name.wasm
 ```
 
-Use this URL as `wasm_bundle_url` in your registry entry.
-
-## Step 3: Fork this repository
+### 3. Fork and add an entry
 
 ```bash
 gh repo fork BiloxiStudios/studiobrain-community-plugins --clone
 cd studiobrain-community-plugins
 ```
 
-## Step 4: Add your plugin entry to index.json
-
-Open `index.json` and add a new object to the `plugins` array. Every field is required:
+Add an object to the `plugins` array in `plugins/index.json`:
 
 ```json
 {
@@ -65,8 +76,12 @@ Open `index.json` and add a new object to the `plugins` array. Every field is re
   "author": "Your Name or Org",
   "repo_url": "https://github.com/your-org/your-plugin-repo",
   "wasm_bundle_url": "https://github.com/your-org/your-plugin-repo/releases/download/v1.0.0/my-plugin.wasm",
-  "platforms": ["core", "desktop", "cloud"],
-  "runtime": "wasm",
+  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "manifest_url": "https://github.com/your-org/your-plugin-repo/releases/download/v1.0.0/plugin.json",
+  "environments": ["desktop", "mobile"],
+  "network": "none",
+  "platforms": ["core", "desktop"],
+  "runtime": "wasm-component",
   "category": "utility",
   "tags": ["tag1", "tag2"],
   "min_version": "0.1.0",
@@ -74,82 +89,106 @@ Open `index.json` and add a new object to the `plugins` array. Every field is re
 }
 ```
 
-### Field reference
+| Field | Description |
+| --- | --- |
+| `id` | Unique `author-plugin-slug`. Lowercase, digits, hyphens. |
+| `wasm_bundle_url` | Direct HTTPS URL to the `.wasm` file. |
+| `sha256` | 64 lowercase hex chars of those bytes. Required when the URL is set. |
+| `manifest_url` | HTTPS URL to `plugin.json`. Required when the WASM URL is set. |
+| `environments` | `desktop`, `mobile`, and/or `cloud` (cloud = panel / author backend, not our Worker). |
+| `network` | `none` or `local`. `local` is allowed only when `environments` is exactly `["desktop"]`. |
+| `runtime` | Must be `wasm-component`. |
+| `category` | `example`, `utility`, `importer`, `exporter`, `ui`, or `workflow`. |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique identifier. Use `author-plugin-slug` format. No spaces. |
-| `name` | string | Human-readable display name. |
-| `version` | string | Semver version of this entry (must match your WASM bundle). |
-| `description` | string | Short description. Max 200 characters. |
-| `author` | string | Your name, GitHub username, or organization name. |
-| `repo_url` | string | URL to the plugin's source repository. |
-| `wasm_bundle_url` | string | Direct URL to the `.wasm` file. Empty string if not yet published. |
-| `platforms` | array | Supported platforms: any combination of `"core"`, `"desktop"`, `"cloud"`. |
-| `runtime` | string | Must be `"wasm"` — only WASM plugins are accepted in the community registry. |
-| `category` | string | One of: `"example"`, `"utility"`, `"importer"`, `"exporter"`, `"ui"`, `"workflow"`. |
-| `tags` | array | Searchable tags. Keep to 5 or fewer. |
-| `min_version` | string | Minimum StudioBrain version required. Semver string. |
-| `license` | string | SPDX license identifier (e.g., `"MIT"`, `"Apache-2.0"`). |
+Do not put secrets in the index entry. Use plugin settings for user-provided credentials.
 
-### ID naming rules
+CI also rejects `network:local` unless the listing is desktop-only.
 
-- Must be globally unique across the registry
-- Lowercase letters, numbers, and hyphens only
-- Recommended format: `{author}-{plugin-slug}` (e.g., `acmestudio-asset-renamer`)
-- No spaces, underscores, or special characters
-
-## Step 5: Validate locally (optional but recommended)
-
-```bash
-# Install ajv-cli for local validation
-npm install -g ajv-cli
-
-# Validate index.json against schema
-ajv validate -s schema/plugin-entry.json -d index.json
-```
-
-Or simply let CI validate when you open the PR.
-
-## Step 6: Open a pull request
+### 4. Open a plugin PR
 
 ```bash
 git checkout -b add-my-plugin-name
-git add index.json
+git add plugins/index.json
 git commit -m "Add my-plugin-name by your-org"
 git push origin add-my-plugin-name
-
-gh pr create \
-  --title "Add: my-plugin-name" \
-  --body "Plugin submission for my-plugin-name.
-
-**What it does:** Brief description
-**Source:** https://github.com/your-org/your-plugin-repo
-**License:** MIT"
 ```
+
+CI validates schema, unique IDs, `wasm-component` runtime, HTTPS WASM URL,
+`sha256`, `manifest_url`, no secrets, and `network:local` only when
+`environments` is exactly `["desktop"]`. Catalog CI is cheaper (schema + HTTPS
+URL + checksum field).
+
+---
+
+## Submit catalog data
+
+Use this path for community **data**, not executable plugins.
+
+Kinds (each is its own array in `catalog/index.json`):
+
+`templates` · `rules` · `skills` · `layouts` · `packs` · `providers` · `abilities` · `flows` · `canvas`
+
+Official copies of these kinds belong in `studiobrain-templates`. Community
+forks, genre packs, and third-party providers belong here.
+
+### Entry shape
+
+Every catalog entry needs these fields (`schema/catalog-entry.json`):
+
+```json
+{
+  "id": "your-org-my-template",
+  "kind": "template",
+  "version": "1.0.0",
+  "download_url": "https://github.com/your-org/my-template/releases/download/v1.0.0/character.md",
+  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "author": "Your Name or Org"
+}
+```
+
+`kind` must match the array you append to (`template` → `templates`, `flow` →
+`flows`, and so on). Extra metadata fields are allowed. Catalog CI is cheaper
+than plugin CI: it checks schema, HTTPS `download_url`, and checksum field
+format. It does not download or execute the artifact.
+
+### Open a catalog PR
+
+```bash
+git checkout -b add-my-template
+git add catalog/index.json
+git commit -m "Add my-template catalog entry"
+git push origin add-my-template
+```
+
+---
 
 ## Review process
 
-1. CI validates your `index.json` entry against the schema automatically
-2. A maintainer reviews the plugin source code and WASM bundle
-3. We check for obvious security concerns (capability declarations, no obfuscated code)
-4. If approved, your entry is merged and immediately available in the registry
+1. CI validates the touched index against the matching schema
+2. A maintainer reviews the source and the hosted artifact
+3. Plugin reviews check capability declarations and obvious security issues
+4. Catalog reviews check license, uniqueness, and that official templates-repo
+   content was not copied here as a bypass
+5. On merge, `publish-r2.yml` uploads:
+   - `community/plugins/_index.json`
+   - `community/catalog/_index.json`
 
 Reviews typically take 3-5 business days.
 
-## Updating a plugin
+## Updating or removing an entry
 
-To update an existing entry (new version, changed URL, etc.):
+Fork, edit **your** object in `plugins/index.json` or `catalog/index.json`
+(bump `version` when the artifact changes), and open a PR. To remove an entry,
+delete that object and say why in the PR body.
 
-1. Fork the repository
-2. Update your plugin's entry in `index.json` — bump the `version` field to match your new WASM bundle
-3. Open a PR with the changes
+## Local validation
 
-Maintainers will fast-track updates from existing verified authors.
-
-## Removing a plugin
-
-If you need to remove your plugin from the registry, open a PR that removes your entry from `index.json`. Include a brief reason in the PR description.
+```bash
+pip install jsonschema
+python3 scripts/validate_entries.py
+python3 scripts/check_duplicates.py
+python3 scripts/check_wasm_runtime.py
+```
 
 ## Questions?
 
