@@ -43,6 +43,10 @@ def _info(msg: str) -> None:
 def make_client(account_id: str, access_key: str, secret_key: str):
     import boto3  # type: ignore
 
+    # boto3 1.36+ defaults to CRC32 request checksums. R2 answers AccessDenied.
+    os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "when_required")
+    os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "when_required")
+
     return boto3.client(
         "s3",
         endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
