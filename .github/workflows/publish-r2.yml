@@ -13,7 +13,8 @@ on:
 jobs:
   publish:
     name: Upload community/_index.json files
-    if: github.repository == 'BiloxiStudios/studiobrain-community-plugins'
+    # After the planned rename to studiobrain-community, keep publishing.
+    if: github.repository == 'BiloxiStudios/studiobrain-community-plugins' || github.repository == 'BiloxiStudios/studiobrain-community'
     runs-on: ubuntu-latest
     permissions:
       contents: read

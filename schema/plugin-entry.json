@@ -13,6 +13,7 @@
     "repo_url",
     "wasm_bundle_url",
     "sha256",
+    "manifest_url",
     "platforms",
     "runtime",
     "category",
@@ -82,6 +83,34 @@
           "pattern": "^[a-f0-9]{64}$"
         }
       ]
+    },
+    "manifest_url": {
+      "type": "string",
+      "description": "HTTPS URL to plugin.json. Empty only for unpublished placeholders.",
+      "oneOf": [
+        {
+          "const": ""
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      ]
+    },
+    "environments": {
+      "type": "array",
+      "description": "Surfaces this plugin may run on. network:local requires exactly [\"desktop\"].",
+      "items": {
+        "type": "string",
+        "enum": ["desktop", "mobile", "cloud"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "network": {
+      "type": "string",
+      "description": "local is allowed only when environments is exactly [\"desktop\"].",
+      "enum": ["", "none", "local"]
     },
     "platforms": {
       "type": "array",

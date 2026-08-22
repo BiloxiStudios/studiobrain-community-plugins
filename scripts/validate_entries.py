@@ -34,6 +34,11 @@ CATALOG_ARRAYS = {
 
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 PLACEHOLDER_PLUGIN_ID = "hello-world-community"
+SECRET_RE = re.compile(
+    r"(?i)(ghp_|gho_|github_pat_|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|"
+    r"BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY|"
+    r"api[_-]?key\s*[:=]\s*['\"][^'\"]{8,})"
+)
 
 
 def _load_schema(schema_path: str) -> dict:
@@ -110,7 +115,10 @@ def validate_plugin(plugin: dict) -> list[str]:
 
     url = plugin.get("wasm_bundle_url", "")
     sha = plugin.get("sha256", "")
+    manifest_url = plugin.get("manifest_url", "")
     runtime = plugin.get("runtime")
+    network = plugin.get("network") or ""
+    environments = plugin.get("environments") or []
 
     if runtime not in ("wasm-component", "wasm"):
         errors.append(
@@ -134,9 +142,32 @@ def validate_plugin(plugin: dict) -> list[str]:
             errors.append(
                 f"Plugin '{plugin_id}': published plugins require sha256 (64 hex chars)"
             )
+        if not manifest_url or not _https_url(manifest_url):
+            errors.append(
+                f"Plugin '{plugin_id}': published plugins require https manifest_url"
+            )
     elif sha:
         errors.append(
             f"Plugin '{plugin_id}': sha256 must be empty when wasm_bundle_url is empty"
+        )
+    elif manifest_url:
+        errors.append(
+            f"Plugin '{plugin_id}': manifest_url must be empty when wasm_bundle_url is empty"
+        )
+
+    desktop_only = environments == ["desktop"]
+    blob = json.dumps(plugin)
+    if network == "local" or "network:local" in blob:
+        if not desktop_only:
+            errors.append(
+                f"Plugin '{plugin_id}': network:local is allowed only when "
+                "environments is exactly [\"desktop\"]"
+            )
+
+    if SECRET_RE.search(blob):
+        errors.append(
+            f"Plugin '{plugin_id}': index entry must not contain secrets "
+            "(API keys, tokens, private keys)"
         )
 
     return errors

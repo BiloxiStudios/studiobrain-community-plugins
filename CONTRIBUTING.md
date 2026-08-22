@@ -77,7 +77,10 @@ Add an object to the `plugins` array in `plugins/index.json`:
   "repo_url": "https://github.com/your-org/your-plugin-repo",
   "wasm_bundle_url": "https://github.com/your-org/your-plugin-repo/releases/download/v1.0.0/my-plugin.wasm",
   "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  "platforms": ["core", "desktop", "cloud"],
+  "manifest_url": "https://github.com/your-org/your-plugin-repo/releases/download/v1.0.0/plugin.json",
+  "environments": ["desktop", "mobile"],
+  "network": "none",
+  "platforms": ["core", "desktop"],
   "runtime": "wasm-component",
   "category": "utility",
   "tags": ["tag1", "tag2"],
@@ -91,8 +94,15 @@ Add an object to the `plugins` array in `plugins/index.json`:
 | `id` | Unique `author-plugin-slug`. Lowercase, digits, hyphens. |
 | `wasm_bundle_url` | Direct HTTPS URL to the `.wasm` file. |
 | `sha256` | 64 lowercase hex chars of those bytes. Required when the URL is set. |
+| `manifest_url` | HTTPS URL to `plugin.json`. Required when the WASM URL is set. |
+| `environments` | `desktop`, `mobile`, and/or `cloud` (cloud = panel / author backend, not our Worker). |
+| `network` | `none` or `local`. `local` is allowed only when `environments` is exactly `["desktop"]`. |
 | `runtime` | Must be `wasm-component`. |
 | `category` | `example`, `utility`, `importer`, `exporter`, `ui`, or `workflow`. |
+
+Do not put secrets in the index entry. Use plugin settings for user-provided credentials.
+
+CI also rejects `network:local` unless the listing is desktop-only.
 
 ### 4. Open a plugin PR
 
@@ -103,8 +113,10 @@ git commit -m "Add my-plugin-name by your-org"
 git push origin add-my-plugin-name
 ```
 
-CI validates schema, unique IDs, `wasm-component` runtime, HTTPS WASM URL, and
-`sha256` format.
+CI validates schema, unique IDs, `wasm-component` runtime, HTTPS WASM URL,
+`sha256`, `manifest_url`, no secrets, and `network:local` only when
+`environments` is exactly `["desktop"]`. Catalog CI is cheaper (schema + HTTPS
+URL + checksum field).
 
 ---
 
