@@ -1,0 +1,86 @@
+name: Merge hosted Marketplace listings
+
+# SBAI-15330. The StudioBrain Marketplace reviews a hosted submission, then
+# opens a pull request here from a `hosted/` branch of this repo. That pull
+# request is merged without a maintainer only when ALL of these hold:
+#
+#   - it comes from a `hosted/` branch of this repository, not a fork
+#   - every changed file is catalog/entries/<id>.json or catalog/files/<id>/<name>
+#   - this repo's own validation, taken from main, passes on the result
+#
+# The job runs on pull_request_target so it has a write token. It never runs
+# code from the pull request: the checks below come from the base checkout,
+# and the pull request is read only as data in a second folder.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: hosted-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    name: Check and merge
+    if: >-
+      startsWith(github.event.pull_request.head.ref, 'hosted/') &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Only catalog entry paths may change
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename' > files.txt
+          test -s files.txt
+          if grep -v -E '^catalog/(entries/[a-z0-9][a-z0-9-]*\.json|files/[a-z0-9][a-z0-9-]*/[A-Za-z0-9][A-Za-z0-9._-]*)$' files.txt; then
+            echo "::error::This pull request changes files outside catalog/entries/ and catalog/files/. A maintainer must review it."
+            exit 1
+          fi
+
+      - name: Check out main (the checks)
+        uses: actions/checkout@v4
+        with:
+          path: base
+          persist-credentials: false
+
+      - name: Check out the pull request (data only)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validation dependencies
+        run: pip install jsonschema
+
+      - name: Validate with the checks from main
+        working-directory: pr
+        run: |
+          # Scripts and schemas come from main; only catalog data comes from the pull request.
+          rm -rf scripts schema
+          cp -r ../base/scripts ../base/schema .
+          python3 scripts/validate_entries.py
+          python3 scripts/check_duplicates.py
+          python3 scripts/check_wasm_runtime.py
+
+      - name: Merge
+        run: gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --squash --delete-branch --match-head-commit "$HEAD_SHA"
+
+      - name: Publish the index
+        # A merge made with this token does not start push workflows.
+        run: gh workflow run publish-r2.yml --repo "$GITHUB_REPOSITORY" --ref "${{ github.event.repository.default_branch }}"

@@ -54,6 +54,9 @@ jobs:
                   sys.exit(1)
           "
 
+      - name: Test the entry-file checks
+        run: python3 scripts/tests/test_catalog_entries.py
+
       - name: Validate plugin and catalog entries
         run: python3 scripts/validate_entries.py
 

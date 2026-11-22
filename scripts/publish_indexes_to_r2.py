@@ -19,8 +19,11 @@ from __future__ import annotations
 
 import argparse
 import os
+import json
 import pathlib
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 
 PLUGIN_INDEX = pathlib.Path("plugins/index.json")
@@ -62,12 +65,26 @@ def publish(bucket: str, account_id: str, access_key: str, secret_key: str) -> i
         _err(f"missing index file(s): {', '.join(missing_files)}")
         return 1
 
+    # SBAI-15330: the published catalog is catalog/index.json plus every
+    # catalog/entries/*.json. A bad entry file stops the publish.
+    from validate_entries import load_catalog
+
+    catalog_doc, catalog_errors = load_catalog()
+    if catalog_errors:
+        for message in catalog_errors:
+            _err(message)
+        return 1
+    bodies = {
+        PLUGIN_INDEX: PLUGIN_INDEX.read_bytes(),
+        CATALOG_INDEX: (json.dumps(catalog_doc, indent=2) + "\n").encode("utf-8"),
+    }
+
     client = make_client(account_id, access_key, secret_key)
     for local_path, key in R2_KEYS:
         client.put_object(
             Bucket=bucket,
             Key=key,
-            Body=local_path.read_bytes(),
+            Body=bodies[local_path],
             ContentType="application/json",
             CacheControl="public, max-age=60",
         )

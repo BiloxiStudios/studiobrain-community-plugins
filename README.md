@@ -11,6 +11,13 @@ This is **one repo, two indexes**:
 | Plugins | [`plugins/index.json`](plugins/index.json) | WASM-component plugins hosted by their authors |
 | Catalog | [`catalog/index.json`](catalog/index.json) | Community templates, rules, skills, layouts, packs, providers, abilities, flows, canvas |
 
+The catalog has a second source: one file per entry under
+[`catalog/entries/`](catalog/entries), with the entry's artifact kept in this
+repo under [`catalog/files/`](catalog/files). The StudioBrain Marketplace adds
+those when its review approves something published from the app (see
+"Published from the app" below). The published catalog index is
+`catalog/index.json` plus every entry file.
+
 Root [`index.json`](index.json) is a thin pointer to those two files. Do not add
 new entries there.
 
@@ -50,6 +57,24 @@ Community plugins cannot:
 - Make arbitrary network requests (requires declared capabilities)
 - Run native code — WASM component only, no native addons, no Python
 
+## Published from the app
+
+A StudioBrain user can publish a template, ruleset, skill, layout, workflow or
+document from inside the app. It goes through an automatic review first. When
+it passes, the Marketplace opens a pull request here from a `hosted/` branch
+that adds exactly two files:
+
+- `catalog/files/<id>/<file>`: the approved text file
+- `catalog/entries/<id>.json`: its entry, with `download_url` and the `sha256`
+  of that file
+
+CI checks that the hash matches the file's real bytes, that the file is UTF-8
+text under 256 KB with no secrets, and that nothing else changed. A pull
+request that passes is merged without a maintainer
+(`.github/workflows/hosted-auto-merge.yml`). One that touches any other path
+is left for a maintainer. When a listing is taken down or held in the app, a
+second pull request removes both files.
+
 ## How to submit
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Plugin submissions and catalog-data
@@ -62,6 +87,7 @@ submissions are different sections with different schemas.
   `hello-world-community` placeholder)
 - WASM bundle must be publicly hosted with a stable HTTPS URL and a `sha256`
 - Catalog entries need `id`, `kind`, `version`, `download_url`, `sha256`, `author`
+- A catalog entry file under `catalog/entries/` also needs `file`, and its `sha256` must match that file
 - IDs must be globally unique across both indexes
 
 ## License

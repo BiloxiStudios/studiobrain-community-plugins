@@ -33,7 +33,8 @@
         "provider",
         "ability",
         "flow",
-        "canvas"
+        "canvas",
+        "document"
       ]
     },
     "version": {
