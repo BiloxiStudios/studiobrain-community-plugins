@@ -34,7 +34,8 @@
         "ability",
         "flow",
         "canvas",
-        "document"
+        "document",
+        "preset"
       ]
     },
     "version": {

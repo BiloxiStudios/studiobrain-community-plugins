@@ -45,6 +45,7 @@ CATALOG_ARRAYS = {
     "flows": "flow",
     "canvas": "canvas",
     "documents": "document",
+    "presets": "preset",
 }
 KIND_TO_ARRAY = {kind: array for array, kind in CATALOG_ARRAYS.items()}
 
