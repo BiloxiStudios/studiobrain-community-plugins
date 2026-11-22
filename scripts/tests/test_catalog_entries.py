@@ -65,6 +65,12 @@ class CatalogEntryFiles(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(len(doc["documents"]), 1)
 
+    def test_preset_kind_has_an_array(self) -> None:
+        self.write(kind="preset")
+        doc, errors = validate_entries.load_catalog()
+        self.assertEqual(errors, [])
+        self.assertEqual(len(doc["presets"]), 1)
+
     def test_wrong_hash_is_refused_and_left_out(self) -> None:
         self.write(sha256="0" * 64)
         doc, errors = validate_entries.load_catalog()

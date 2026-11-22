@@ -59,8 +59,8 @@ Community plugins cannot:
 
 ## Published from the app
 
-A StudioBrain user can publish a template, ruleset, skill, layout, workflow or
-document from inside the app. It goes through an automatic review first. When
+A StudioBrain user can publish a template, ruleset, skill, layout, workflow,
+document or generation preset from inside the app. It goes through an automatic review first. When
 it passes, the Marketplace opens a pull request here from a `hosted/` branch
 that adds exactly two files:
 
