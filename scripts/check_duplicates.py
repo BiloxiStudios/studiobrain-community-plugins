@@ -7,14 +7,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from validate_entries import CATALOG_ARRAYS, CATALOG_INDEX, PLUGIN_INDEX
+from validate_entries import CATALOG_ARRAYS, PLUGIN_INDEX, load_catalog
 
 
 def main() -> int:
     with open(PLUGIN_INDEX, encoding="utf-8") as f:
         plugins_doc = json.load(f)
-    with open(CATALOG_INDEX, encoding="utf-8") as f:
-        catalog_doc = json.load(f)
+    catalog_doc, _ = load_catalog()
 
     seen: dict[str, str] = {}
     duplicates: list[str] = []

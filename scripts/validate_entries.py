@@ -3,6 +3,13 @@
 
 Plugins are stricter: schema + sha256 + WASM URL shape.
 Catalog is cheaper: schema + HTTPS URL + checksum field format.
+
+Catalog entries come from two places (SBAI-15330). catalog/index.json holds
+entries added by hand whose artifact the author hosts. catalog/entries/<id>.json
+holds one entry per file, with its artifact in this repo under
+catalog/files/<id>/. The StudioBrain Marketplace writes those when its review
+approves a hosted submission. For an in-repo artifact the SHA-256 is checked
+against the real bytes, and the file is scanned for secrets.
 """
 from __future__ import annotations
 
@@ -13,12 +20,19 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import hashlib
+from pathlib import Path
 
 
 PLUGIN_INDEX = "plugins/index.json"
 CATALOG_INDEX = "catalog/index.json"
 PLUGIN_SCHEMA = "schema/plugin-entry.json"
 CATALOG_SCHEMA = "schema/catalog-entry.json"
+CATALOG_ENTRIES_DIR = "catalog/entries"
+CATALOG_FILES_DIR = "catalog/files"
+MAX_CATALOG_FILE_BYTES = 256 * 1024
+ENTRY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+FILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$")
 
 CATALOG_ARRAYS = {
     "templates": "template",
@@ -30,7 +44,9 @@ CATALOG_ARRAYS = {
     "abilities": "ability",
     "flows": "flow",
     "canvas": "canvas",
+    "documents": "document",
 }
+KIND_TO_ARRAY = {kind: array for array, kind in CATALOG_ARRAYS.items()}
 
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 PLACEHOLDER_PLUGIN_ID = "hello-world-community"
@@ -206,6 +222,100 @@ def load_json(path: str) -> dict:
         return json.load(f)
 
 
+def validate_entry_file(path: Path) -> tuple[dict | None, list[str]]:
+    """Check one catalog/entries/<id>.json and the artifact it names."""
+    label = f"Catalog entry file '{path.as_posix()}'"
+    try:
+        entry = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, [f"{label}: not valid JSON ({exc})"]
+    if not isinstance(entry, dict):
+        return None, [f"{label}: must be a JSON object"]
+
+    errors: list[str] = []
+    entry_id = entry.get("id")
+    if not isinstance(entry_id, str) or not ENTRY_ID_RE.fullmatch(entry_id):
+        return None, [f"{label}: id must be lowercase letters, digits and dashes"]
+    if path.stem != entry_id:
+        errors.append(f"{label}: file name must be '{entry_id}.json' to match its id")
+    if entry.get("kind") not in KIND_TO_ARRAY:
+        errors.append(f"{label}: unknown kind {entry.get('kind')!r}")
+
+    file_rel = entry.get("file")
+    prefix = f"{CATALOG_FILES_DIR}/{entry_id}/"
+    if not isinstance(file_rel, str) or not file_rel.startswith(prefix):
+        errors.append(f"{label}: file must be a path under {prefix}")
+        return entry, errors
+    name = file_rel[len(prefix):]
+    if not FILE_NAME_RE.fullmatch(name) or ".." in name:
+        errors.append(f"{label}: file must name one plain file under {prefix}")
+        return entry, errors
+
+    artifact = Path(file_rel)
+    if artifact.is_symlink() or not artifact.is_file():
+        errors.append(f"{label}: {file_rel} is not a regular file in this repo")
+        return entry, errors
+    data = artifact.read_bytes()
+    if len(data) > MAX_CATALOG_FILE_BYTES:
+        errors.append(f"{label}: {file_rel} is over {MAX_CATALOG_FILE_BYTES} bytes")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        errors.append(f"{label}: {file_rel} must be UTF-8 text")
+        text = ""
+    digest = hashlib.sha256(data).hexdigest()
+    if entry.get("sha256") != digest:
+        errors.append(
+            f"{label}: sha256 does not match {file_rel} "
+            f"(entry {entry.get('sha256')!r}, file {digest})"
+        )
+    url = entry.get("download_url", "")
+    if not isinstance(url, str) or not url.endswith("/" + file_rel):
+        errors.append(f"{label}: download_url must end with /{file_rel}")
+    if SECRET_RE.search(text) or SECRET_RE.search(json.dumps(entry)):
+        errors.append(f"{label}: entry and file must not contain secrets")
+    return entry, errors
+
+
+def check_orphan_files() -> list[str]:
+    """Every folder under catalog/files/ belongs to an entry file."""
+    root = Path(CATALOG_FILES_DIR)
+    if not root.is_dir():
+        return []
+    errors: list[str] = []
+    for child in sorted(root.iterdir()):
+        if child.name.startswith("."):
+            continue
+        if not child.is_dir():
+            errors.append(f"{child.as_posix()}: only folders named after an entry id belong here")
+        elif not (Path(CATALOG_ENTRIES_DIR) / f"{child.name}.json").is_file():
+            errors.append(f"{child.as_posix()}: no {CATALOG_ENTRIES_DIR}/{child.name}.json names this folder")
+    return errors
+
+
+def load_catalog() -> tuple[dict, list[str]]:
+    """catalog/index.json with every valid catalog/entries/*.json merged in.
+
+    This is the document that is validated, checked for duplicates and
+    published. Entry files that fail their checks are left out and reported.
+    """
+    doc = load_json(CATALOG_INDEX)
+    errors: list[str] = []
+    entries_dir = Path(CATALOG_ENTRIES_DIR)
+    if entries_dir.is_dir():
+        for path in sorted(entries_dir.glob("*.json")):
+            entry, entry_errors = validate_entry_file(path)
+            errors.extend(entry_errors)
+            if entry is None or entry_errors:
+                continue
+            array_name = KIND_TO_ARRAY[entry["kind"]]
+            if not isinstance(doc.get(array_name), list):
+                doc[array_name] = []
+            doc[array_name].append(entry)
+    errors.extend(check_orphan_files())
+    return doc, errors
+
+
 def main() -> int:
     errors: list[str] = []
     plugin_count = 0
@@ -223,7 +333,8 @@ def main() -> int:
             else:
                 print(f"  PASS plugin: {plugin.get('id', '<unknown>')}")
 
-    catalog_doc = load_json(CATALOG_INDEX)
+    catalog_doc, catalog_errors = load_catalog()
+    errors.extend(catalog_errors)
     for array_name, expected_kind in CATALOG_ARRAYS.items():
         if array_name not in catalog_doc:
             errors.append(f"{CATALOG_INDEX} missing required array '{array_name}'")
